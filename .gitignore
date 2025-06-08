@@ -1,1 +1,8 @@
 venv/
+main.py
+r13944045_private.csv
+r13944045_public.csv
+private_data.csv
+public_data.csv
+relationships.png
+requirements.txt
