@@ -30,11 +30,9 @@ class SimpleClustering:
     def cluster_data(self, X):
         print(f"Clustering {len(X):,} samples into {self.n_clusters} clusters...")
         
-        # 重點：利用作業提示 - S2,S3維度有5個明顯聚類
         with tqdm(desc="Key-dimension analysis", unit="step") as pbar:
             X_key = X[:, [1, 2]]  # S2, S3維度
             
-            # 先用密度較高的聚類找出5個主要群組
             main_kmeans = MiniBatchKMeans(
                 n_clusters=5, 
                 random_state=self.random_state,
@@ -45,12 +43,10 @@ class SimpleClustering:
             main_groups = main_kmeans.fit_predict(X_key)
             pbar.update(1)
         
-        # 基於5個主群進行細分到15個聚類
         with tqdm(desc="Hierarchical subdivision", unit="group") as pbar:
             final_labels = np.zeros(len(X), dtype=int)
             current_label = 0
             
-            # 每個主群分成3個子群 (5*3=15)
             for group_id in range(5):
                 mask = main_groups == group_id
                 group_size = np.sum(mask)
@@ -58,25 +54,22 @@ class SimpleClustering:
                 if group_size == 0:
                     continue
                 
-                X_group = X[mask]  # 使用全維度資料進行子群聚類
+                X_group = X[mask]  
                 
                 if group_size >= 3:
-                    # 子群聚類
                     sub_kmeans = MiniBatchKMeans(
                         n_clusters=3,
-                        random_state=self.random_state + group_id,  # 不同群組用不同種子
+                        random_state=self.random_state + group_id, 
                         batch_size=min(2000, group_size),
                         max_iter=200,
                         n_init=5
                     )
                     sub_labels = sub_kmeans.fit_predict(X_group)
                     
-                    # 分配標籤
                     group_indices = np.where(mask)[0]
                     for i, idx in enumerate(group_indices):
                         final_labels[idx] = current_label + sub_labels[i]
                 else:
-                    # 群組太小，直接分配
                     group_indices = np.where(mask)[0]
                     for i, idx in enumerate(group_indices):
                         final_labels[idx] = current_label + (i % 3)
@@ -84,11 +77,9 @@ class SimpleClustering:
                 current_label += 3
                 pbar.update(1)
         
-        # 確保正確聚類數量
         unique_clusters = len(np.unique(final_labels))
         if unique_clusters != self.n_clusters:
             with tqdm(desc="Final adjustment", unit="step") as pbar:
-                # 使用全維度資料做最終調整
                 adjust_kmeans = MiniBatchKMeans(
                     n_clusters=self.n_clusters,
                     random_state=self.random_state,
@@ -122,7 +113,6 @@ class SimpleClustering:
 def main():
     print("Starting clustering analysis...")
     
-    # 公開資料集
     try:
         clusterer = SimpleClustering(n_clusters=15)
         clusterer.process_dataset('public_data.csv', 'r13944045_public.csv')
@@ -133,7 +123,6 @@ def main():
     except Exception as e:
         print(f"Error: {e}")
     
-    # 私人資料集
     try:
         clusterer = SimpleClustering(n_clusters=23)
         clusterer.process_dataset('private_data.csv', 'r13944045_private.csv')
